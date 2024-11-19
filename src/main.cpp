@@ -1,18 +1,37 @@
 #include <Arduino.h>
 
+// Defines
+#define BUTTON_PIN 2         
+#define DEBOUNCE_DELAY 100   
+
+// Variables
+unsigned long lastDebounceTime = 0;
+bool lastButtonState = HIGH;
+
 // put function declarations here:
-int myFunction(int, int);
+void checkButton();
 
 void setup() {
-  // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+  Serial.begin(9600);
+  pinMode(BUTTON_PIN, INPUT_PULLUP); 
+
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  checkButton();
 }
 
 // put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
+void checkButton() {
+  bool currentButtonState = digitalRead(BUTTON_PIN); // Read the current button state
+  if (currentButtonState != lastButtonState) {
+    lastDebounceTime = millis(); // Update last change time
+  }
+  // If the button state is stable for the debounce period
+  if ((millis() - lastDebounceTime) > DEBOUNCE_DELAY) {
+    if (currentButtonState == LOW) { // Button is pressed
+      Serial.println("Button Pressed");
+    }
+  }
+  lastButtonState = currentButtonState; // Update last button state
 }
