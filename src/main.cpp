@@ -1,37 +1,103 @@
 #include <Arduino.h>
+#include <LiquidCrystal.h>
+#include <SoftwareSerial.h>
 
 // Defines
 #define BUTTON_PIN 2         
-#define DEBOUNCE_DELAY 100   
-
+#define DEBOUNCE_DELAY 100
+#define TRIGGER_PIN 6
+#define MAX_SECTIONS 10
+#define UART_TIMEOUT 2000
+#define RX_PIN 3
+#define TX_PIN 4             
+   
 // Variables
 unsigned long lastDebounceTime = 0;
 bool lastButtonState = HIGH;
+SoftwareSerial softSerial(RX_PIN, TX_PIN);
 
-// put function declarations here:
+// LCD pin configuration
+const int rs = 7, en = 8, d4 = 9, d5 = 10, d6 = 11, d7 = 12;
+LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+
+struct ParkingSection {
+  char section[16];
+  int spots;
+};
+ParkingSection parkingList[MAX_SECTIONS];
+int parkingCount = 0;                     
+int currentDisplayIndex = 0;              
+bool flag = false; 
+
+// Function declarations
 void checkButton();
+void fetchDataFromNetwork();
 
 void setup() {
   Serial.begin(9600);
+  softSerial.begin(9600);
   pinMode(BUTTON_PIN, INPUT_PULLUP); 
-
+  pinMode(TRIGGER_PIN, OUTPUT);        
+  digitalWrite(TRIGGER_PIN, HIGH);
+  Serial.println("Press Button");
 }
 
 void loop() {
   checkButton();
 }
 
-// put function definitions here:
+// Function definitions
 void checkButton() {
-  bool currentButtonState = digitalRead(BUTTON_PIN); // Read the current button state
+  bool currentButtonState = digitalRead(BUTTON_PIN); 
   if (currentButtonState != lastButtonState) {
     lastDebounceTime = millis(); // Update last change time
   }
-  // If the button state is stable for the debounce period
+
   if ((millis() - lastDebounceTime) > DEBOUNCE_DELAY) {
     if (currentButtonState == LOW) { // Button is pressed
-      Serial.println("Button Pressed");
+      fetchDataFromNetwork();
     }
   }
-  lastButtonState = currentButtonState; // Update last button state
+  if (flag) {
+    Serial.println("Updating Display");
+    Serial.print(parkingList[0].section);
+    Serial.print(parkingList[0].spots);
+    flag = false;
+  }
+  lastButtonState = currentButtonState; 
+}
+
+// Function to fetch data from ESP
+void fetchDataFromNetwork() {
+  parkingCount = 0; 
+  flag = false;
+  
+  // Trigger the ESP to send data
+  digitalWrite(TRIGGER_PIN, LOW); 
+  delay(10);                      
+  digitalWrite(TRIGGER_PIN, HIGH); 
+  Serial.println("Wait...");
+
+  unsigned long startTime = millis();
+
+  while (millis() - startTime < UART_TIMEOUT) {
+    if (softSerial.available()) {
+      char buffer[32];
+      softSerial.readBytesUntil('\n', buffer, sizeof(buffer)); 
+      Serial.print(buffer); 
+
+      if (strcmp(buffer, "END") == 0) break;
+
+      // store the received data : A 10
+      sscanf(buffer, "%s %d", parkingList[parkingCount].section, &parkingList[parkingCount].spots);
+      parkingCount++;
+      Serial.println("Data Added");
+    }
+  }
+  if (parkingCount > 0) {
+    Serial.println("Data Received");
+    flag = true;
+  } else {
+    Serial.println("No Data Found");
+  }
 }
