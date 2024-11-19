@@ -32,6 +32,7 @@ bool flag = false;
 // Function declarations
 void checkButton();
 void fetchDataFromNetwork();
+void displayNextParking();
 
 void setup() {
   Serial.begin(9600);
@@ -39,7 +40,8 @@ void setup() {
   pinMode(BUTTON_PIN, INPUT_PULLUP); 
   pinMode(TRIGGER_PIN, OUTPUT);        
   digitalWrite(TRIGGER_PIN, HIGH);
-  Serial.println("Press Button");
+  lcd.begin(16, 2);                    
+  lcd.print("Press Button");
 }
 
 void loop() {
@@ -60,8 +62,7 @@ void checkButton() {
   }
   if (flag) {
     Serial.println("Updating Display");
-    Serial.print(parkingList[0].section);
-    Serial.print(parkingList[0].spots);
+    displayNextParking(); 
     flag = false;
   }
   lastButtonState = currentButtonState; 
@@ -76,7 +77,8 @@ void fetchDataFromNetwork() {
   digitalWrite(TRIGGER_PIN, LOW); 
   delay(10);                      
   digitalWrite(TRIGGER_PIN, HIGH); 
-  Serial.println("Wait...");
+  lcd.clear();
+  lcd.print("Wait...");
 
   unsigned long startTime = millis();
 
@@ -94,10 +96,30 @@ void fetchDataFromNetwork() {
       Serial.println("Data Added");
     }
   }
+  lcd.clear();
   if (parkingCount > 0) {
-    Serial.println("Data Received");
+    lcd.print("Data Received");
     flag = true;
   } else {
-    Serial.println("No Data Found");
+    lcd.print("No Data Found");
+  }
+}
+
+// Function to display the next parking section
+void displayNextParking() {
+  if (parkingCount > 0) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Sec: ");
+    lcd.print(parkingList[currentDisplayIndex].section); 
+    lcd.setCursor(0, 1);
+    lcd.print("Spots: ");
+    lcd.print(parkingList[currentDisplayIndex].spots); 
+
+    // Move to the next section
+    currentDisplayIndex = (currentDisplayIndex + 1) % parkingCount;
+  } else {
+    lcd.clear();
+    lcd.print("No Data");
   }
 }
