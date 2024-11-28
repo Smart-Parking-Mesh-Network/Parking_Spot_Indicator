@@ -4,7 +4,7 @@
 
 // Defines
 #define BUTTON_PIN 2         
-#define DEBOUNCE_DELAY 100
+#define DEBOUNCE_DELAY 150
 #define TRIGGER_PIN 6
 #define MAX_SECTIONS 10
 #define UART_TIMEOUT 2000
@@ -13,7 +13,8 @@
    
 // Variables
 unsigned long lastDebounceTime = 0;
-bool lastButtonState = HIGH;
+int lastButtonState = HIGH;
+int buttonState;
 SoftwareSerial softSerial(RX_PIN, TX_PIN);
 
 // LCD pin configuration
@@ -51,16 +52,19 @@ void loop() {
 
 // Function definitions
 void checkButton() {
-  bool currentButtonState = digitalRead(BUTTON_PIN); 
+  int currentButtonState = digitalRead(BUTTON_PIN); 
   if (currentButtonState != lastButtonState) {
     lastDebounceTime = millis(); // Update last change time
   }
 
   if ((millis() - lastDebounceTime) > DEBOUNCE_DELAY) {
-    if (currentButtonState == LOW) { // Button is pressed
-      fetchDataFromNetwork();
+    if ( currentButtonState != buttonState ) {
+      buttonState = currentButtonState;
+      if (buttonState == LOW) { // Button is pressed
+        fetchDataFromNetwork();
+      }
+      }
     }
-  }
   if (flag) {
     Serial.println("Updating Display");
     displayNextParking(); 
@@ -87,9 +91,9 @@ void fetchDataFromNetwork() {
     if (softSerial.available()) {
       char buffer[32];
       softSerial.readBytesUntil('\n', buffer, sizeof(buffer)); 
-      Serial.print(buffer); 
-
-      if (strcmp(buffer, "END") == 0) break;
+      Serial.println(buffer); 
+      if (strcmp(buffer, "NO") > 0) break;
+      if (strcmp(buffer, "END") > 0) break;
 
       // store the received data : A 10
       sscanf(buffer, "%s %d %d", parkingList[parkingCount].section, &parkingList[parkingCount].spots, &parkingList[parkingCount].entranceScore);
@@ -99,7 +103,6 @@ void fetchDataFromNetwork() {
   }
   lcd.clear();
   if (parkingCount > 0) {
-    lcd.print("Data Received");
     flag = true;
   } else {
     lcd.print("No Data Found");
