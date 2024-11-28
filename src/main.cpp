@@ -23,6 +23,7 @@ LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 struct ParkingSection {
   char section[16];
   int spots;
+  int entranceScore;
 };
 ParkingSection parkingList[MAX_SECTIONS];
 int parkingCount = 0;                     
@@ -91,7 +92,7 @@ void fetchDataFromNetwork() {
       if (strcmp(buffer, "END") == 0) break;
 
       // store the received data : A 10
-      sscanf(buffer, "%s %d", parkingList[parkingCount].section, &parkingList[parkingCount].spots);
+      sscanf(buffer, "%s %d %d", parkingList[parkingCount].section, &parkingList[parkingCount].spots, &parkingList[parkingCount].entranceScore);
       parkingCount++;
       Serial.println("Data Added");
     }
@@ -112,6 +113,8 @@ void displayNextParking() {
     lcd.setCursor(0, 0);
     lcd.print("Sec: ");
     lcd.print(parkingList[currentDisplayIndex].section); 
+    lcd.print(" Score: ");
+    lcd.print(parkingList[currentDisplayIndex].entranceScore);
     lcd.setCursor(0, 1);
     lcd.print("Spots: ");
     lcd.print(parkingList[currentDisplayIndex].spots); 
