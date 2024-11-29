@@ -6,7 +6,7 @@
 #define BUTTON_PIN 2         
 #define DEBOUNCE_DELAY 150
 #define TRIGGER_PIN 6
-#define MAX_SECTIONS 10
+#define MAX_SECTIONS 4
 #define UART_TIMEOUT 2000
 #define RX_PIN 3
 #define TX_PIN 4             
@@ -35,6 +35,7 @@ bool flag = false;
 void checkButton();
 void fetchDataFromNetwork();
 void displayNextParking();
+void clearParkingList();
 
 void setup() {
   Serial.begin(9600);
@@ -61,13 +62,17 @@ void checkButton() {
     if ( currentButtonState != buttonState ) {
       buttonState = currentButtonState;
       if (buttonState == LOW) { // Button is pressed
+        lcd.clear();
+        lcd.print("Wait...");
+        clearParkingList();
         fetchDataFromNetwork();
       }
       }
     }
   if (flag) {
     Serial.println("Updating Display");
-    displayNextParking(); 
+    delay(1000);
+    displayNextParking();
     flag = false;
   }
   lastButtonState = currentButtonState; 
@@ -82,8 +87,7 @@ void fetchDataFromNetwork() {
   digitalWrite(TRIGGER_PIN, LOW); 
   delay(10);                      
   digitalWrite(TRIGGER_PIN, HIGH); 
-  lcd.clear();
-  lcd.print("Wait...");
+
 
   unsigned long startTime = millis();
 
@@ -101,10 +105,11 @@ void fetchDataFromNetwork() {
       Serial.println("Data Added");
     }
   }
-  lcd.clear();
   if (parkingCount > 0) {
     flag = true;
   } else {
+    delay(1000);
+    lcd.clear();
     lcd.print("No Data Found");
   }
 }
@@ -128,4 +133,13 @@ void displayNextParking() {
     lcd.clear();
     lcd.print("No Data");
   }
+}
+
+void clearParkingList() {
+  for (int i = 0; i < MAX_SECTIONS; i++) {
+    memset(parkingList[i].section, 0, sizeof(parkingList[i].section)); // Clear section name
+    parkingList[i].spots = 0;         // Reset spots
+    parkingList[i].entranceScore = 0; // Reset entrance score
+  }
+  parkingCount = 0;           // Reset parking count
 }
