@@ -25,17 +25,20 @@ struct ParkingSection {
   char section[16];
   int spots;
   int entranceScore;
+  int score;
 };
 ParkingSection parkingList[MAX_SECTIONS];
 int parkingCount = 0;                     
 int currentDisplayIndex = 0;              
 bool flag = false; 
+int selectiveScore = 0; // 1: sort by entranceScore
 
 // Function declarations
 void checkButton();
 void fetchDataFromNetwork();
 void displayNextParking();
 void clearParkingList();
+void quickSort(ParkingSection arr[], int low, int high);
 
 void setup() {
   Serial.begin(9600);
@@ -62,6 +65,7 @@ void checkButton() {
     if ( currentButtonState != buttonState ) {
       buttonState = currentButtonState;
       if (buttonState == LOW) { // Button is pressed
+        selectiveScore = 1;
         lcd.clear();
         lcd.print("Wait...");
         clearParkingList();
@@ -71,6 +75,7 @@ void checkButton() {
     }
   if (flag) {
     Serial.println("Updating Display");
+    quickSort(parkingList, 0, parkingCount - 1);
     delay(1000);
     displayNextParking();
     flag = false;
@@ -99,12 +104,17 @@ void fetchDataFromNetwork() {
       if (strcmp(buffer, "NO") > 0) break;
       if (strcmp(buffer, "END") > 0) break;
 
-      // store the received data : A 10
+      // store the received data : A 10 2
       sscanf(buffer, "%s %d %d", parkingList[parkingCount].section, &parkingList[parkingCount].spots, &parkingList[parkingCount].entranceScore);
+      // store the selective score 
+      if(selectiveScore == 1) {
+        parkingList[parkingCount].score = parkingList[parkingCount].entranceScore;
+      }
       parkingCount++;
       Serial.println("Data Added");
     }
   }
+  selectiveScore = 0;
   if (parkingCount > 0) {
     flag = true;
   } else {
@@ -128,7 +138,7 @@ void displayNextParking() {
     lcd.print(parkingList[currentDisplayIndex].spots); 
 
     // Move to the next section
-    currentDisplayIndex = (currentDisplayIndex + 1) % parkingCount;
+    // currentDisplayIndex = (currentDisplayIndex + 1) % parkingCount;
   } else {
     lcd.clear();
     lcd.print("No Data");
@@ -142,4 +152,38 @@ void clearParkingList() {
     parkingList[i].entranceScore = 0; // Reset entrance score
   }
   parkingCount = 0;           // Reset parking count
+  currentDisplayIndex = 0 ;
+}
+
+// Swap function to swap two ParkingSection elements
+void swap(ParkingSection &a, ParkingSection &b) {
+  ParkingSection temp = a;
+  a = b;
+  b = temp;
+}
+
+// Partition function for Quick Sort
+int partition(ParkingSection arr[], int low, int high) {
+  ParkingSection pivot = arr[high];
+  int i = low - 1;
+
+  for (int j = low; j < high; j++) {
+    // Check if the current section has spots and compare scores
+    if ((arr[j].spots > 0 && pivot.spots == 0) || 
+        (arr[j].spots > 0 && arr[j].score < pivot.score)) {
+      i++;
+      swap(arr[i], arr[j]);
+    }
+  }
+  swap(arr[i + 1], arr[high]);
+  return i + 1;
+}
+
+// Quick Sort function
+void quickSort(ParkingSection arr[], int low, int high) {
+  if (low < high) {
+    int pi = partition(arr, low, high); // Partition index
+    quickSort(arr, low, pi - 1);       // Sort elements before partition
+    quickSort(arr, pi + 1, high);      // Sort elements after partition
+  }
 }
