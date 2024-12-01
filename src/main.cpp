@@ -10,7 +10,10 @@
 #define UART_TIMEOUT 2000
 #define RX_PIN 3
 #define TX_PIN 4             
-   
+#define MAX_RESERVATIONS 10
+#define RESERVATION_TIMEOUT 30000
+#define SHOW_RESULT 3000
+
 // Variables
 unsigned long lastDebounceTime = 0;
 int lastButtonState = HIGH;
@@ -28,7 +31,14 @@ struct ParkingSection {
   int score;
 };
 ParkingSection parkingList[MAX_SECTIONS];
-int parkingCount = 0;                     
+struct Reservation {
+  char section[16];       
+  int spotID;             
+  unsigned long expiry;   
+};
+Reservation reservationList[MAX_RESERVATIONS];
+int parkingCount = 0;
+int reservationCount = 0;                      
 int currentDisplayIndex = 0;              
 bool flag = false; 
 int selectiveScore = 0; // 1: sort by entranceScore
@@ -39,6 +49,9 @@ void fetchDataFromNetwork();
 void displayNextParking();
 void clearParkingList();
 void quickSort(ParkingSection arr[], int low, int high);
+void addReservation(const char* sectionName, int spotID);
+void manageReservations();
+int getReservedCount(const char* sectionName);
 
 void setup() {
   Serial.begin(9600);
@@ -52,6 +65,7 @@ void setup() {
 
 void loop() {
   checkButton();
+  manageReservations();
 }
 
 // Function definitions
@@ -121,28 +135,41 @@ void fetchDataFromNetwork() {
     delay(1000);
     lcd.clear();
     lcd.print("No Data Found");
+    delay(SHOW_RESULT); // time for watching driver
+    lcd.clear();
+    lcd.print("Press Button");
   }
 }
 
-// Function to display the next parking section
-void displayNextParking() {
-  if (parkingCount > 0) {
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Sec: ");
-    lcd.print(parkingList[currentDisplayIndex].section); 
-    lcd.print(" Score: ");
-    lcd.print(parkingList[currentDisplayIndex].entranceScore);
-    lcd.setCursor(0, 1);
-    lcd.print("Spots: ");
-    lcd.print(parkingList[currentDisplayIndex].spots); 
+// Function to display the parking section
+void displayParking() {
+  for (int i = 0; i < parkingCount; i++) {
+    int reservedCount = getReservedCount(parkingList[i].section); // تعداد رزروها
+    int remainingSpots = parkingList[i].spots - reservedCount;    // تعداد جای خالی باقی‌مانده
 
-    // Move to the next section
-    // currentDisplayIndex = (currentDisplayIndex + 1) % parkingCount;
-  } else {
-    lcd.clear();
-    lcd.print("No Data");
+    if (remainingSpots > 0) {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Sec: ");
+      lcd.print(parkingList[i].section);
+      lcd.print(" Score: ");
+      lcd.print(parkingList[currentDisplayIndex].score);
+      lcd.setCursor(0, 1);
+      lcd.print("Spot: ");
+      lcd.print(remainingSpots);
+
+      addReservation(parkingList[i].section, reservedCount);
+      delay(SHOW_RESULT); // time for watching driver
+      lcd.clear();
+      lcd.print("Press Button"); 
+      return;
+    }
   }
+  lcd.clear();
+  lcd.print("No Free Spot");
+  delay(SHOW_RESULT); // time for watching driver
+  lcd.clear();
+  lcd.print("Press Button");
 }
 
 void clearParkingList() {
@@ -185,5 +212,41 @@ void quickSort(ParkingSection arr[], int low, int high) {
     int pi = partition(arr, low, high); // Partition index
     quickSort(arr, low, pi - 1);       // Sort elements before partition
     quickSort(arr, pi + 1, high);      // Sort elements after partition
+  }
+}
+
+// Get the number of reservations for a section
+int getReservedCount(const char* sectionName) {
+  int count = 0;
+  for (int i = 0; i < reservationCount; i++) {
+    if (strcmp(reservationList[i].section, sectionName) == 0) {
+      count++;
+    }
+  }
+  return count;
+}
+
+// Add a reservation
+void addReservation(const char* sectionName, int spotID) {
+  if (reservationCount < MAX_RESERVATIONS) {
+    strcpy(reservationList[reservationCount].section, sectionName);
+    reservationList[reservationCount].spotID = spotID;
+    reservationList[reservationCount].expiry = millis() + RESERVATION_TIMEOUT;
+    reservationCount++;
+  }
+}
+
+// Manage and remove expired reservations
+void manageReservations() {
+  unsigned long currentTime = millis();
+  for (int i = 0; i < reservationCount; i++) {
+    if (currentTime > reservationList[i].expiry) {
+      // Remove expired reservation
+      for (int k = i; k < reservationCount - 1; k++) {
+        reservationList[k] = reservationList[k + 1];
+      }
+      reservationCount--;
+      i--;
+    }
   }
 }
