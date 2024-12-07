@@ -46,7 +46,7 @@ int selectiveScore = 0; // 1: sort by entranceScore
 // Function declarations
 void checkButton();
 void fetchDataFromNetwork();
-void displayNextParking();
+void displayParking();
 void clearParkingList();
 void quickSort(ParkingSection arr[], int low, int high);
 void addReservation(const char* sectionName, int spotID);
@@ -91,7 +91,7 @@ void checkButton() {
     Serial.println("Updating Display");
     quickSort(parkingList, 0, parkingCount - 1);
     delay(1000);
-    displayNextParking();
+    displayParking();
     flag = false;
   }
   lastButtonState = currentButtonState; 
@@ -177,6 +177,7 @@ void clearParkingList() {
     memset(parkingList[i].section, 0, sizeof(parkingList[i].section)); // Clear section name
     parkingList[i].spots = 0;         // Reset spots
     parkingList[i].entranceScore = 0; // Reset entrance score
+    parkingList[i].score = 0;
   }
   parkingCount = 0;           // Reset parking count
   currentDisplayIndex = 0 ;
