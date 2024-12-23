@@ -13,7 +13,8 @@
 #define TX_PIN 4             
 #define MAX_RESERVATIONS 20
 #define RESERVATION_TIMEOUT 30000
-#define SHOW_RESULT 3000
+#define SHOW_RESULT 5000
+#define CLEAR_RESULT 300
 
 // Variables
 unsigned long lastEntranceDebounceTime  = 0, lastElevatorDebounceTime  = 0;
@@ -88,6 +89,7 @@ void checkButton() {
       if (entranceButtonState == LOW) { // Button is pressed
         selectiveScore = 1;
         lcd.clear();
+        delay(CLEAR_RESULT);
         lcd.print("Entrance Wait...");
         clearParkingList();
         fetchDataFromNetwork();
@@ -102,6 +104,7 @@ void checkButton() {
     if (elevatorButtonState == LOW) { // Button is pressed
       selectiveScore = 2;
       lcd.clear();
+      delay(CLEAR_RESULT);
       lcd.print("Elevator Wait...");
       clearParkingList();
       fetchDataFromNetwork();
@@ -159,9 +162,11 @@ void fetchDataFromNetwork() {
   } else {
     delay(1000);
     lcd.clear();
+    delay(CLEAR_RESULT);
     lcd.print("No Data Found");
     delay(SHOW_RESULT); // time for watching driver
     lcd.clear();
+    delay(CLEAR_RESULT);
     lcd.print("Press Button");
   }
 }
@@ -174,6 +179,7 @@ void displayParking() {
 
     if (remainingSpots > 0) {
       lcd.clear();
+      delay(CLEAR_RESULT);
       lcd.setCursor(0, 0);
       lcd.print("Sec: ");
       lcd.print(parkingList[i].section);
@@ -186,14 +192,17 @@ void displayParking() {
       addReservation(parkingList[i].section, reservedCount);
       delay(SHOW_RESULT); // time for watching driver
       lcd.clear();
+      delay(CLEAR_RESULT);
       lcd.print("Press Button"); 
       return;
     }
   }
   lcd.clear();
+  delay(CLEAR_RESULT);
   lcd.print("No Free Spot");
   delay(SHOW_RESULT); // time for watching driver
   lcd.clear();
+  delay(CLEAR_RESULT);
   lcd.print("Press Button");
 }
 
